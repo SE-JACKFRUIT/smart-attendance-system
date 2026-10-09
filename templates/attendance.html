@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">Take attendance</h3>
+<p class="text-muted">Opens your webcam and recognizes enrolled faces live for up to 30
+seconds (or until you press <b>q</b>). You'll get a chance to review and correct the
+result before anything is saved.</p>
+<form method="post" class="mb-4">
+  <button class="btn btn-primary" type="submit">Start attendance capture (opens webcam)</button>
+</form>
+
+<h5>Marked present today ({{ today }})</h5>
+<table class="table table-bordered bg-white">
+  <thead><tr><th>Name</th><th>Roll No</th><th>Time</th><th>Marked by</th></tr></thead>
+  <tbody>
+    {% for r in today_rows %}
+    <tr>
+      <td>{{ r.name }}</td><td>{{ r.roll_no }}</td><td>{{ r.att_time }}</td>
+      <td>{% if r.marked_by == 'auto' %}<span class="text-muted">auto</span>{% else %}{{ r.marked_by }} (override){% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-muted">No one marked present yet today.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

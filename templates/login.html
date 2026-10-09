@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <h3 class="mb-3">Log in</h3>
+    <form method="post" class="card card-body">
+      <div class="mb-3">
+        <label class="form-label">Username / Roll number</label>
+        <input type="text" name="username" class="form-control" required autofocus>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Log in</button>
+    </form>
+    <p class="text-muted mt-3">
+      Students: log in with your roll number as both username and password
+      (you must be enrolled).
+    </p>
+    <p class="mt-2">Faculty / Admin? <a href="{{ url_for('register') }}">Create new user</a></p>
+  </div>
+</div>
+{% endblock %}

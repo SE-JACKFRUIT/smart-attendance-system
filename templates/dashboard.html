@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>Analytics dashboard</h3>
+  {% if session.role in ['Admin', 'Faculty'] %}
+  <a class="btn btn-outline-secondary" href="{{ url_for('export_csv') }}">Export CSV</a>
+  {% endif %}
+</div>
+<p class="text-muted">Based on {{ total_sessions }} recorded session(s).</p>
+<table class="table table-bordered bg-white">
+  <thead><tr><th>Name</th><th>Roll No</th><th>Present</th><th>Attendance %</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr class="{{ 'table-danger' if r.pct < threshold else '' }}">
+      <td>{{ r.name }}</td>
+      <td>{{ r.roll_no }}</td>
+      <td>{{ r.present }} / {{ r.total }}</td>
+      <td style="min-width:220px;">
+        <div class="progress" style="height:18px;">
+          <div class="progress-bar {{ 'bg-danger' if r.pct < threshold else 'bg-success' }}"
+               style="width: {{ r.pct }}%;">{{ r.pct }}%</div>
+        </div>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="text-muted">No students enrolled yet{% if session.role == 'Student' %} (or you aren't linked to a student record){% endif %}.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

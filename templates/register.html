@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <h3 class="mb-2">Create new user</h3>
+    <p class="text-muted">For Admin / Faculty accounts. Students are added by enrolling them -
+    their login is their roll number.</p>
+    <form method="post" class="card card-body">
+      <div class="mb-3">
+        <label class="form-label">Role</label>
+        <select name="role" class="form-select">
+          <option>Faculty</option>
+          <option>Admin</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">New username</label>
+        <input type="text" name="username" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password (min 6 characters)</label>
+        <input type="password" name="password" class="form-control" required minlength="6">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirm password</label>
+        <input type="password" name="confirm" class="form-control" required minlength="6">
+      </div>
+      <hr>
+      <p class="text-muted mb-2">An existing admin must authorize this:</p>
+      <div class="mb-3">
+        <label class="form-label">Admin username</label>
+        <input type="text" name="auth_username" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Admin password</label>
+        <input type="password" name="auth_password" class="form-control" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Create user</button>
+    </form>
+    <p class="mt-3"><a href="{{ url_for('login') }}">Back to login</a></p>
+  </div>
+</div>
+{% endblock %}

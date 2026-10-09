@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-3">Review attendance before saving</h3>
+<p class="text-muted">The checkboxes below reflect what the camera recognized. Untick anyone
+wrongly marked present, or tick anyone the camera missed, then save.</p>
+<form method="post" action="{{ url_for('attendance_save') }}">
+  <table class="table table-bordered bg-white">
+    <thead><tr><th>Name</th><th>Roll No</th><th>Present?</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.roll_no }}</td>
+        <td>
+          <input type="checkbox" class="form-check-input" name="present_{{ r.id }}"
+                 {% if r.present %}checked{% endif %}>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="text-muted">No students enrolled yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn btn-primary" type="submit">Save attendance</button>
+  <a class="btn btn-outline-secondary" href="{{ url_for('attendance') }}">Cancel</a>
+</form>
+{% endblock %}
