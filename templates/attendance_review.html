@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <h3 class="mb-3">Review attendance before saving</h3>
-<p class="text-muted">The checkboxes below reflect what the camera recognized. Untick anyone
-wrongly marked present, or tick anyone the camera missed, then save.</p>
+<p class="text-muted">These are the students the camera recognized. Untick anyone who was
+wrongly recognized (they will be saved as Absent), then save.</p>
 <form method="post" action="{{ url_for('attendance_save') }}">
   <table class="table table-bordered bg-white">
     <thead><tr><th>Name</th><th>Roll No</th><th>Present?</th></tr></thead>
@@ -17,7 +17,7 @@ wrongly marked present, or tick anyone the camera missed, then save.</p>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="3" class="text-muted">No students enrolled yet.</td></tr>
+      <tr><td colspan="3" class="text-muted">No one was recognized.</td></tr>
       {% endfor %}
     </tbody>
   </table>
