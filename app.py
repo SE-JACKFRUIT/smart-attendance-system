@@ -48,7 +48,7 @@ os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(TRAINER_PATH), exist_ok=True)
 
 app = Flask(__name__)
-app.secret_key = "jackfruit-mini-project-demo"  # fine for a class demo only
+app.secret_key = os.environ.get("SECRET_KEY", "jackfruit-mini-project-demo")  # set SECRET_KEY env var in real use
 
 
 # ---------------------------------------------------------------- database
@@ -162,8 +162,19 @@ def capture_face_samples(student_id, name):
     if not cam.isOpened():
         raise RuntimeError("Could not access the webcam. Is one connected and free?")
 
-    folder = os.path.join(DATASET_DIR, f"{student_id}_{name}")
+    # Re-use an existing folder for this student (re-enrollment adds samples
+    # instead of overwriting them); otherwise create a fresh one.
+    folder = None
+    for d in os.listdir(DATASET_DIR):
+        if d.startswith(f"{student_id}_") and os.path.isdir(os.path.join(DATASET_DIR, d)):
+            folder = os.path.join(DATASET_DIR, d)
+            break
+    if folder is None:
+        folder = os.path.join(DATASET_DIR, f"{student_id}_{name}")
     os.makedirs(folder, exist_ok=True)
+    existing = [int(os.path.splitext(f)[0]) for f in os.listdir(folder)
+                if os.path.splitext(f)[0].isdigit()]
+    next_index = (max(existing) + 1) if existing else 1
 
     count = 0
     while count < SAMPLES_PER_STUDENT:
@@ -175,7 +186,7 @@ def capture_face_samples(student_id, name):
         for (x, y, w, h) in faces:
             count += 1
             face_img = cv2.resize(gray[y:y + h, x:x + w], (200, 200))
-            cv2.imwrite(os.path.join(folder, f"{count}.jpg"), face_img)
+            cv2.imwrite(os.path.join(folder, f"{next_index + count - 1}.jpg"), face_img)
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 200, 0), 2)
             break  # one face per frame is enough while enrolling
         cv2.putText(frame, f"Captured {count}/{SAMPLES_PER_STUDENT} - press q to stop",
@@ -446,6 +457,29 @@ def enroll():
     return render_template("enroll.html", students=students)
 
 
+@app.route("/enroll/<int:student_id>/more", methods=["POST"])
+@role_required("Admin", "Faculty")
+def enroll_more(student_id):
+    """US-07 / REQ-EN-4: add more face samples to an already-enrolled student
+    (different lighting/angles) and retrain the model."""
+    conn = get_db()
+    student = conn.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+    conn.close()
+    if student is None:
+        flash("That student is not enrolled.", "danger")
+        return redirect(url_for("enroll"))
+    try:
+        captured = capture_face_samples(student_id, student["name"].replace(" ", ""))
+        if captured == 0:
+            flash("No face captured - nothing was added. Try better lighting.", "danger")
+        else:
+            train_model()
+            flash(f"Added {captured} more samples for {student['name']} and retrained the model.", "success")
+    except RuntimeError as e:
+        flash(str(e), "danger")
+    return redirect(url_for("enroll"))
+
+
 @app.route("/attendance", methods=["GET", "POST"])
 @role_required("Admin", "Faculty")
 def attendance():
@@ -572,4 +606,4 @@ def export_csv():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")  # debug off by default (security scan)
