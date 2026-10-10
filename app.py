@@ -23,7 +23,9 @@ cloud/remote server).
 
 import os
 import csv
+import shutil
 import sqlite3
+import time
 from functools import wraps
 from datetime import date, datetime
 from io import StringIO
@@ -40,7 +42,14 @@ DATASET_DIR = os.path.join(BASE_DIR, "dataset")
 TRAINER_PATH = os.path.join(BASE_DIR, "trainer", "trainer.yml")
 CASCADE_PATH = os.path.join(BASE_DIR, "data", "haarcascade_frontalface_default.xml")
 CONFIDENCE_THRESHOLD = 70   # LBPH: LOWER is a better match. Tune if needed.
-SAMPLES_PER_STUDENT = 30
+SAMPLES_PER_STUDENT = 100   # samples captured per enrollment / re-enrollment session
+MIN_SAMPLES = 3             # fewer than this = enrollment counts as failed
+CAPTURE_INTERVAL = 0.18     # seconds between saved samples: 100 samples ~ 18 s of capture
+NO_FACE_TIMEOUT = 10        # stop if no face has been seen for this many seconds
+# On-screen prompts, one per slice of the capture, so the face is seen from many angles.
+POSE_PROMPTS = ["Look straight at the camera", "Turn your head slightly LEFT",
+                "Turn your head slightly RIGHT", "Tilt your head slightly UP",
+                "Tilt your head slightly DOWN"]
 MAX_SESSION_SECONDS = 30    # safety cap so the camera window can't hang forever
 LOW_ATTENDANCE_THRESHOLD = 75
 
@@ -177,20 +186,33 @@ def capture_face_samples(student_id, name):
     next_index = (max(existing) + 1) if existing else 1
 
     count = 0
+    last_saved = 0.0
+    last_face_seen = time.monotonic()   # starts now, so the 10 s also covers the very start
     while count < SAMPLES_PER_STUDENT:
+        if time.monotonic() - last_face_seen > NO_FACE_TIMEOUT:
+            break
         ok, frame = cam.read()
         if not ok:
             break
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = detector.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5)
+        now = time.monotonic()
         for (x, y, w, h) in faces:
-            count += 1
-            face_img = cv2.resize(gray[y:y + h, x:x + w], (200, 200))
-            cv2.imwrite(os.path.join(folder, f"{next_index + count - 1}.jpg"), face_img)
+            last_face_seen = now
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 200, 0), 2)
+            # Save a sample only every CAPTURE_INTERVAL seconds, so the person
+            # has time to change head position between samples.
+            if now - last_saved >= CAPTURE_INTERVAL:
+                count += 1
+                last_saved = now
+                face_img = cv2.resize(gray[y:y + h, x:x + w], (200, 200))
+                cv2.imwrite(os.path.join(folder, f"{next_index + count - 1}.jpg"), face_img)
             break  # one face per frame is enough while enrolling
+        prompt = POSE_PROMPTS[min(count * len(POSE_PROMPTS) // SAMPLES_PER_STUDENT,
+                                  len(POSE_PROMPTS) - 1)]
+        cv2.putText(frame, prompt, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2)
         cv2.putText(frame, f"Captured {count}/{SAMPLES_PER_STUDENT} - press q to stop",
-                    (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 0), 2)
+                    (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 0), 2)
         cv2.imshow("Enrolling face - press q to stop early", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -400,7 +422,7 @@ def index():
     total_students = conn.execute("SELECT COUNT(*) c FROM students").fetchone()["c"]
     total_sessions = conn.execute("SELECT COUNT(DISTINCT att_date) c FROM attendance").fetchone()["c"]
     today_present = conn.execute(
-        "SELECT COUNT(*) c FROM attendance WHERE att_date = ?", (date.today().isoformat(),)
+        "SELECT COUNT(*) c FROM attendance WHERE att_date = ? AND status = 'Present'", (date.today().isoformat(),)
     ).fetchone()["c"]
     conn.close()
     return render_template("index.html", total_students=total_students,
@@ -428,9 +450,10 @@ def enroll():
                 (name, roll_no, date.today().isoformat()))
             # Give the student their own login too (username/password = roll
             # number by default - a real deployment should force a change).
-            conn.execute(
+            ucur = conn.execute(
                 "INSERT OR IGNORE INTO users (username, password_hash, role, linked_roll_no) VALUES (?, ?, 'Student', ?)",
                 (roll_no, generate_password_hash(roll_no), roll_no))
+            created_user = ucur.rowcount > 0
             conn.commit()
             student_id = cur.lastrowid
         except sqlite3.IntegrityError:
@@ -439,16 +462,33 @@ def enroll():
             return redirect(url_for("enroll"))
         conn.close()
 
+        def undo_enrollment():
+            """Enrollment failed: remove the student, their new login and any images,
+            so a failed attempt leaves nothing behind."""
+            c = get_db()
+            c.execute("DELETE FROM students WHERE id = ?", (student_id,))
+            if created_user:
+                c.execute("DELETE FROM users WHERE username = ? AND role = 'Student'", (roll_no,))
+            c.commit()
+            c.close()
+            for d in os.listdir(DATASET_DIR):
+                if d.startswith(f"{student_id}_"):
+                    shutil.rmtree(os.path.join(DATASET_DIR, d), ignore_errors=True)
+
         try:
             captured = capture_face_samples(student_id, name.replace(" ", ""))
-            if captured == 0:
-                flash("No face captured - try again with better lighting.", "danger")
-            else:
-                train_model()
-                flash(f"Enrolled {name} ({captured} face samples captured and model retrained). "
-                      f"Their login is username '{roll_no}', password '{roll_no}'.", "success")
         except RuntimeError as e:
-            flash(str(e), "danger")
+            undo_enrollment()
+            flash(f"{e} {name} was NOT enrolled.", "danger")
+            return redirect(url_for("enroll"))
+        if captured < MIN_SAMPLES:
+            undo_enrollment()
+            flash(f"No usable face captured ({captured} samples, need at least {MIN_SAMPLES}) - "
+                  f"{name} was NOT enrolled. Try again with better lighting.", "danger")
+        else:
+            train_model()
+            flash(f"Enrolled {name} ({captured} face samples captured and model retrained). "
+                  f"Their login is username '{roll_no}', password '{roll_no}'.", "success")
         return redirect(url_for("enroll"))
 
     conn = get_db()
@@ -489,9 +529,15 @@ def attendance():
             if not results:
                 flash("No students are enrolled yet.", "danger")
                 return redirect(url_for("attendance"))
-            # Stash the scan result (student_id -> bool) in the session so
+            # Stash the RECOGNISED students (student_id -> True) in the session so
             # the review screen can show it without re-scanning.
-            session["pending_attendance"] = {str(k): v for k, v in results.items()}
+            recognized = {str(k): True for k, v in results.items() if v}
+            if not recognized:
+                session.pop("pending_attendance", None)
+                flash("No enrolled student was recognised. Try again with better lighting "
+                      "or move closer to the camera.", "danger")
+                return redirect(url_for("attendance"))
+            session["pending_attendance"] = recognized
             return redirect(url_for("attendance_review"))
         except RuntimeError as e:
             flash(str(e), "danger")
@@ -500,7 +546,7 @@ def attendance():
     conn = get_db()
     today_rows = conn.execute("""SELECT s.name, s.roll_no, a.att_time, a.marked_by FROM attendance a
                                   JOIN students s ON s.id = a.student_id
-                                  WHERE a.att_date = ? ORDER BY a.att_time""",
+                                  WHERE a.att_date = ? AND a.status = 'Present' ORDER BY a.att_time""",
                               (date.today().isoformat(),)).fetchall()
     conn.close()
     return render_template("attendance.html", today_rows=today_rows, today=date.today().isoformat())
@@ -517,8 +563,9 @@ def attendance_review():
     conn = get_db()
     students = conn.execute("SELECT id, name, roll_no FROM students ORDER BY name").fetchall()
     conn.close()
+    # Only students the camera recognised are listed (unticking one marks them absent).
     rows = [{"id": s["id"], "name": s["name"], "roll_no": s["roll_no"],
-             "present": pending.get(str(s["id"]), False)} for s in students]
+             "present": pending[str(s["id"])]} for s in students if str(s["id"]) in pending]
     return render_template("attendance_review.html", rows=rows)
 
 
@@ -575,7 +622,7 @@ def dashboard():
     rows = []
     for s in students:
         present = conn.execute(
-            "SELECT COUNT(*) c FROM attendance WHERE student_id = ?", (s["id"],)
+            "SELECT COUNT(*) c FROM attendance WHERE student_id = ? AND status = 'Present'", (s["id"],)
         ).fetchone()["c"]
         pct = round((present / total_sessions) * 100) if total_sessions else 0
         rows.append({"name": s["name"], "roll_no": s["roll_no"],
