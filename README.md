@@ -19,23 +19,22 @@ webcam attached - it will NOT work on a remote/cloud server.
 
 ## Login
 
-Seed accounts are created automatically on first run (change these for any
-real deployment - they only exist so you have something to log in with):
+There are **no built-in accounts**. On the very first run every page redirects
+to `/setup`, where you choose your own Admin username and password.
 
-| Role    | Username  | Password    |
-|---------|-----------|-------------|
-| Admin   | admin     | admin123    |
-| Faculty | faculty   | faculty123  |
-
-Each enrolled student also gets a login: **username = their roll number,
-password = their roll number**. There is no self-service password change in
-this demo build.
+* More Admin/Faculty accounts: login page -> "Create new user" (needs an
+  existing Admin's username + password to authorize).
+* Students cannot self-register. Enrolling a student creates their login:
+  **username = roll number, password = roll number**. Only currently enrolled
+  students can log in.
 
 ## Flow
 
 1. **Enroll** (Admin/Faculty only) - add a student, then look at the webcam
    window that opens (captures ~30 face samples, press `q` to stop early).
-   This also creates that student's login account.
+   This also creates that student's login account. Use **Add more samples**
+   next to an enrolled student to capture extra images (different lighting/angles)
+   and retrain the model.
 2. **Take Attendance** (Admin/Faculty only) - opens the webcam, recognizes
    enrolled faces live (press `q` to stop), then shows a **review screen**
    where you can tick/untick anyone before saving - nothing is written to
@@ -51,3 +50,14 @@ this demo build.
 Flask, OpenCV (Haar cascade for detection + LBPH for recognition, via
 `opencv-contrib-python`), SQLite, Werkzeug password hashing for auth.
 No dlib/cmake build tools required.
+
+## Tests & CI
+
+```
+pip install -r requirements-dev.txt
+python -m pytest -v
+```
+
+Tests mock the webcam, so they run anywhere. GitHub Actions
+(`.github/workflows/ci.yml`) runs the tests and a `bandit` security scan on
+every push and pull request.

@@ -17,12 +17,14 @@ samples. Look at the camera and move your head slightly. Press <b>q</b> to stop 
 
 <h5>Enrolled students</h5>
 <table class="table table-bordered bg-white">
-  <thead><tr><th>ID</th><th>Name</th><th>Roll No</th><th>Enrolled on</th></tr></thead>
+  <thead><tr><th>ID</th><th>Name</th><th>Roll No</th><th>Enrolled on</th><th>Action</th></tr></thead>
   <tbody>
     {% for s in students %}
-    <tr><td>{{ s.id }}</td><td>{{ s.name }}</td><td>{{ s.roll_no }}</td><td>{{ s.enrolled_on }}</td></tr>
+    <tr><td>{{ s.id }}</td><td>{{ s.name }}</td><td>{{ s.roll_no }}</td><td>{{ s.enrolled_on }}</td>
+      <td><form method="post" action="{{ url_for('enroll_more', student_id=s.id) }}" class="m-0">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Add more samples (opens webcam)</button></form></td></tr>
     {% else %}
-    <tr><td colspan="4" class="text-muted">No students enrolled yet.</td></tr>
+    <tr><td colspan="5" class="text-muted">No students enrolled yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
