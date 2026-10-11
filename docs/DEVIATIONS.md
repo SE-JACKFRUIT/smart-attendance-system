@@ -27,6 +27,20 @@ were found while building and manually testing the app with a real webcam.
 | D9 | Saving writes a row for every enrolled student. | Saving writes rows only for the students on the review screen. Students who were not recognised have no row for that day and count as absent on the dashboard. | Follows from D8. | REQ-OV, REQ-AN, US-12 |
 | D10 | "Add more samples" is described as a re-enroll action (REQ-EN-4). | Implemented as an **Add more samples** button next to each enrolled student (`/enroll/<id>/more`). | Gives US-07 a real UI. | REQ-EN-4, US-07, EN-07 |
 
+## A2. SRS requirements not (fully) implemented
+
+Found while building the traceability matrix (SRS Appendix C). The matrix marks these Partial or Not implemented.
+
+| # | SRS requirement | Final app | Reason |
+|---|---|---|---|
+| D15 | REQ-EN-3: store a face encoding vector, not the raw image. | The app stores the cropped face images in `dataset/` (never committed to GitHub) and trains an LBPH model file from them. | LBPH needs the images to retrain the model after each enrollment. |
+| D16 | REQ-AT-2, AT-4, AN-1, RP-1: sections, section selection, date ranges, captured-frame reference. | There is no "section" concept. Attendance stores the date and time only. The dashboard and CSV cover all records, with no date-range filter. | Kept the scope small for a mini-project. |
+| D17 | REQ-AN-2: chart of attendance trends over time. | The dashboard shows a percentage bar per student, not a trend chart. | Not built. |
+| D18 | REQ-RP-2, RP-3: PDF export, and a report header with section, date range and generation time. | Only CSV export exists, with a column-header row. | Not built. |
+| D19 | REQ-AU-4: Admin can deactivate users and reset passwords. | Admin-authorised account creation exists, and student logins are created on enrollment. There is no deactivate or password reset. | Not built. |
+| D20 | SRS 6.4: fall back to manual attendance entry if the camera is unavailable. | A clear error is shown instead. There is no manual attendance entry screen. | Not built. |
+| D21 | SW Design names a function `recognize_and_mark()`. | The code has `scan_faces()` (recognition), `attendance_review()` and `attendance_save()` (review and saving). | The design was written before the review step was split out. |
+
 ## B. Defects found in testing and fixed
 
 | # | Defect | Fix |
@@ -55,7 +69,7 @@ were found while building and manually testing the app with a real webcam.
 
 | Document | What to note |
 |---|---|
-| SRS | D1–D10 (auth, enrollment, override behaviour) |
+| SRS | D1–D10 (auth, enrollment, override behaviour); D15–D20 (requirements not fully implemented) |
 | SW Design / Validation Spec | D4–D9 (capture and review behaviour) |
 | Test Plan | EN-01, EN-04, EN-07 (sample count, rollback, timeout); AT and OV rows that mention listing or ticking all students |
 | Jira Backlog | US-01 (first-run setup instead of seeded accounts); US-10 (recognised-only review) |
