@@ -28,6 +28,10 @@ to `/setup`, where you choose your own Admin username and password.
   **username = roll number, password = roll number**. Only currently enrolled
   students can log in.
 
+Sessions expire after **30 minutes of inactivity** (change with the `SESSION_IDLE_MINUTES`
+environment variable, e.g. `set SESSION_IDLE_MINUTES=1` in Windows CMD before `python app.py`
+to test it quickly).
+
 ## Flow
 
 1. **Enroll** (Admin/Faculty only) - add a student, then look at the webcam
