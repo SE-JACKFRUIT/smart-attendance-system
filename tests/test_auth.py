@@ -58,3 +58,20 @@ def test_login_required_for_dashboard(client):
 
 def test_logout(admin):
     assert b"Logged out" in admin.get("/logout", follow_redirects=True).data
+
+
+def test_session_expires_after_idle_timeout(client, mod):
+    """AU-14: after the idle window the user must log in again."""
+    import time
+    from datetime import timedelta
+    make_admin(client)
+    login(client, "boss", "secret1")
+    assert client.get("/dashboard").status_code == 200
+    mod.app.permanent_session_lifetime = timedelta(seconds=1)
+    try:
+        login(client, "boss", "secret1")      # new cookie with the 1 s lifetime
+        assert client.get("/dashboard").status_code == 200
+        time.sleep(2)
+        assert "/login" in client.get("/dashboard").headers["Location"]
+    finally:
+        mod.app.permanent_session_lifetime = timedelta(minutes=mod.SESSION_IDLE_MINUTES)

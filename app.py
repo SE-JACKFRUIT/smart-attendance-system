@@ -27,7 +27,7 @@ import shutil
 import sqlite3
 import time
 from functools import wraps
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from io import StringIO
 
 import cv2
@@ -52,11 +52,13 @@ POSE_PROMPTS = ["Look straight at the camera", "Turn your head slightly LEFT",
                 "Tilt your head slightly DOWN"]
 MAX_SESSION_SECONDS = 30    # safety cap so the camera window can't hang forever
 LOW_ATTENDANCE_THRESHOLD = 75
+SESSION_IDLE_MINUTES = float(os.environ.get("SESSION_IDLE_MINUTES", "30"))  # AU-14: idle timeout
 
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(TRAINER_PATH), exist_ok=True)
 
 app = Flask(__name__)
+app.permanent_session_lifetime = timedelta(minutes=SESSION_IDLE_MINUTES)
 app.secret_key = os.environ.get("SECRET_KEY", "jackfruit-mini-project-demo")  # set SECRET_KEY env var in real use
 
 
@@ -122,6 +124,9 @@ def force_first_admin_setup():
 
 
 def start_session(user):
+    # Permanent session = cookie expires SESSION_IDLE_MINUTES after the last request
+    # (Flask refreshes it on every request), i.e. an inactivity timeout.
+    session.permanent = True
     session["user_id"] = user["id"]
     session["username"] = user["username"]
     session["role"] = user["role"]
