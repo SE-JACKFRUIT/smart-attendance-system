@@ -2,7 +2,9 @@
 
 **Project:** Face Recognition-Based Smart Attendance Management System with Analytics and Reporting (Project ID 20)
 **Subject:** UE24CS341A, Software Engineering mini-project
-**Author:** <Name>, <SRN> (solo team)
+**Team:** 39 (SE GROUP)
+**Members:** Mithun S (PES2UG24AM208), Bharath H G (PES2UG24AM197), Varun C H (PES2UG24AM180), Yashwant Aditya Varma (PES2UG24AM190)
+**Prepared by:** Mithun S
 
 This file records every place where the final product differs from the submitted SRS,
 High-Level Architecture, SW Design, Validation Spec and Test Plan, and why. The changes
@@ -37,7 +39,7 @@ were found while building and manually testing the app with a real webcam.
 | # | Documents said | Final project | Reason |
 |---|---|---|---|
 | D11 | Not specified. | Debug mode is **off** by default (`FLASK_DEBUG=1` turns it on) and the secret key can come from the `SECRET_KEY` environment variable. | The CI security scan (bandit) flagged debug mode and a hard-coded key. |
-| D12 | Team of 3–4, with a second person reviewing pull requests. | Solo project. Pull requests are reviewed by the author, pending the teacher's confirmation on self-review. | Single-member team. |
+| D12 | Work shared across the 4-member team, with a second person reviewing pull requests. | Development, testing and documentation were carried out by one member (Mithun S). Pull requests were reviewed by the author, as no second reviewer was available. | Teammates did not contribute code to the repository. |
 | D13 | Jira for the backlog. | GitHub Projects and Issues (17 stories). | Agreed with the course approach. No separate Jira needed. |
 | D14 | Test Plan: 55 cases. | 43 automated pytest tests run on every push and pull request through GitHub Actions. The webcam-dependent cases are executed manually. | The camera cannot be used in CI, so those tests mock it. |
 
