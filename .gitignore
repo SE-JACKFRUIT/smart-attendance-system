@@ -8,3 +8,7 @@ dataset/*
 !dataset/.gitkeep
 trainer/*
 !trainer/.gitkeep
+
+coverage.xml
+.coverage
+htmlcov/
