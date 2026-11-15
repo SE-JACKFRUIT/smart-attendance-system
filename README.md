@@ -35,7 +35,7 @@ to test it quickly).
 ## Flow
 
 1. **Enroll** (Admin/Faculty only) - add a student, then look at the webcam
-   window that opens (captures ~30 face samples, press `q` to stop early).
+   window that opens (captures 100 face samples over about 18 seconds, with on-screen head-pose prompts; stops after 10 s with no face; press `q` to stop early).
    This also creates that student's login account. Use **Add more samples**
    next to an enrolled student to capture extra images (different lighting/angles)
    and retrain the model.
